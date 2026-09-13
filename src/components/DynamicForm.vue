@@ -1,10 +1,14 @@
 <script setup lang="ts">
 import type { FormField } from "../types/form";
 import BaseInput from "./BaseInput.vue";
-import BaseSelect from "./BaseSelect.vue"; // ایمپورت کامپوننت جدید
+import BaseSelect from "./BaseSelect.vue";
 
 defineProps<{
   schema: FormField[];
+}>();
+
+defineEmits<{
+  (e: "submit", data: Record<string, any>): void;
 }>();
 
 const formData = defineModel<Record<string, any>>({ default: () => ({}) });
@@ -18,7 +22,6 @@ const getComponent = (type: string) => {
   }
 };
 </script>
-
 <template>
   <form
     @submit.prevent="$emit('submit', formData)"

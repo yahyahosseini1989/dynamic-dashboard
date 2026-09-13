@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import DynamicForm from "../components/DynamicForm.vue";
+import DataTable from "../components/DataTable.vue";
 import type { FormField } from "../types/form";
 
-// تعریف ساختار فرم به صورت داینامیک (Schema)
+// ۱. ساختار فرم (Schema)
 const userSchema: FormField[] = [
   {
     name: "firstName",
@@ -18,31 +19,60 @@ const userSchema: FormField[] = [
     name: "role",
     label: "نقش سازمانی",
     type: "select",
+    required: true,
     options: [
-      { label: "مدیر ارشد", value: "admin" },
-      { label: "توسعه‌دهنده", value: "developer" },
+      { label: "مدیر ارشد", value: "Admin" },
+      { label: "توسعه‌دهنده", value: "Developer" },
+      { label: "پشتیبان", value: "Support" },
     ],
   },
 ];
 
-// استیت برای نگهداری مقادیر فرم
-const formData = ref({});
+// ۲. ساختار ستون‌های جدول
+const tableHeaders = [
+  { key: "firstName", label: "نام" },
+  { key: "lastName", label: "نام خانوادگی" },
+  { key: "age", label: "سن" },
+  { key: "role", label: "نقش سازمانی" },
+];
 
+// ۳. State Management
+const formData = ref({});
+const usersList = ref<Record<string, any>[]>([]);
+const isLoading = ref(false);
+
+// ۴. شبیه‌سازی ارسال به API و به‌روزرسانی جدول
 const handleSubmit = (data: Record<string, any>) => {
-  console.log("فرم با موفقیت ارسال شد:", data);
-  alert("اطلاعات در کنسول ثبت شد! خروجی زنده را در باکس مشکی ببینید.");
+  isLoading.value = true;
+
+  // شبیه‌سازی تاخیر شبکه (Network Delay)
+  setTimeout(() => {
+    // افزودن داده جدید به بالای لیست جدول
+    usersList.value.unshift({ ...data, id: Date.now() });
+
+    // ریست کردن فرم
+    formData.value = {};
+    isLoading.value = false;
+  }, 600);
 };
 </script>
 
 <template>
-  <div class="p-8 max-w-4xl mx-auto" dir="rtl">
-    <h1 class="text-2xl font-bold text-gray-800 mb-6">
-      داشبورد مدیریت - تست فرم‌ساز پویا
+  <div class="p-8 max-w-7xl mx-auto" dir="rtl">
+    <h1 class="text-3xl font-bold text-gray-800 mb-8 border-b pb-4">
+      مدیریت کاربران (یکپارچگی فرم و جدول)
     </h1>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-      <!-- بخش فرم -->
-      <div>
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <!-- بخش فرم (یک ستون) -->
+      <div class="lg:col-span-1">
+        <h2 class="text-xl font-semibold text-gray-700 mb-4 flex items-center">
+          <span
+            class="bg-blue-600 text-white w-6 h-6 rounded-full flex justify-center items-center text-sm ml-2"
+            >+</span
+          >
+          افزودن کاربر جدید
+        </h2>
         <DynamicForm
           :schema="userSchema"
           v-model="formData"
@@ -50,14 +80,20 @@ const handleSubmit = (data: Record<string, any>) => {
         />
       </div>
 
-      <!-- بخش نمایش زنده داده‌ها -->
-      <div
-        class="bg-gray-800 text-green-400 p-6 rounded-lg shadow-inner h-fit border border-gray-700"
-      >
-        <h3 class="text-white mb-4 font-semibold border-b border-gray-600 pb-2">
-          خروجی زنده داده‌ها (JSON)
-        </h3>
-        <pre class="text-sm font-mono text-left" dir="ltr">{{ formData }}</pre>
+      <!-- بخش جدول (دو ستون) -->
+      <div class="lg:col-span-2">
+        <h2 class="text-xl font-semibold text-gray-700 mb-4 flex items-center">
+          <span
+            class="bg-gray-700 text-white w-6 h-6 rounded-full flex justify-center items-center text-sm ml-2"
+            >≡</span
+          >
+          لیست کاربران سیستم
+        </h2>
+        <DataTable
+          :headers="tableHeaders"
+          :items="usersList"
+          :isLoading="isLoading"
+        />
       </div>
     </div>
   </div>
