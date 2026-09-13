@@ -1,8 +1,13 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { storeToRefs } from 'pinia'
 import DynamicForm from '../components/DynamicForm.vue'
 import DataTable from '../components/DataTable.vue'
 import type { FormField } from '../types/form'
+import { useUsersStore } from '../store/users'
+
+const usersStore = useUsersStore()
+const { usersList, isLoading } = storeToRefs(usersStore)
 
 const userSchema: FormField[] = [
   { name: 'firstName', label: 'نام', type: 'text', required: true, placeholder: 'مثلاً یحیی' },
@@ -29,43 +34,29 @@ const tableHeaders = [
 ]
 
 const formData = ref<Record<string, any>>({})
-const usersList = ref<Record<string, any>[]>([])
-const isLoading = ref(false)
-const editingId = ref<number | null>(null) // نگهداری ID کاربری که در حال ویرایش است
+const editingId = ref<number | null>(null)
 
-// تغییر داینامیک عنوان فرم
 const formTitle = computed(() => editingId.value ? 'ویرایش اطلاعات کاربر' : 'افزودن کاربر جدید')
 
-const handleSubmit = (data: Record<string, any>) => {
-  isLoading.value = true
-  
-  setTimeout(() => {
-    if (editingId.value) {
-      // حالت ویرایش: پیدا کردن و آپدیت آیتم
-      const index = usersList.value.findIndex(u => u.id === editingId.value)
-      if (index !== -1) usersList.value[index] = { ...data, id: editingId.value }
-      editingId.value = null // خروج از حالت ویرایش
-    } else {
-      // حالت ایجاد: افزودن آیتم جدید
-      usersList.value.unshift({ ...data, id: Date.now() })
-    }
-    
-    formData.value = {} 
-    isLoading.value = false
-  }, 500)
+const handleSubmit = async (data: Record<string, any>) => {
+  if (editingId.value) {
+    await usersStore.updateUser(editingId.value, data)
+    editingId.value = null
+  } else {
+    await usersStore.addUser(data)
+  }
+  formData.value = {} 
 }
 
-// انتقال داده‌های سطر به فرم
 const handleEdit = (item: Record<string, any>) => {
-  formData.value = { ...item } // کپی کردن داده‌ها برای جلوگیری از تغییر مستقیم استیت جدول
+  formData.value = { ...item }
   editingId.value = item.id
-  window.scrollTo({ top: 0, behavior: 'smooth' }) // اسکرول نرم به سمت فرم
+  window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
-// حذف آیتم
-const handleDelete = (item: Record<string, any>) => {
+const handleDelete = async (item: Record<string, any>) => {
   if (confirm(`آیا از حذف ${item.firstName} ${item.lastName} اطمینان دارید؟`)) {
-    usersList.value = usersList.value.filter(u => u.id !== item.id)
+    await usersStore.deleteUser(item.id)
   }
 }
 </script>
