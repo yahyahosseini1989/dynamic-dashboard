@@ -1,99 +1,124 @@
 <script setup lang="ts">
-import { ref } from "vue";
-import DynamicForm from "../components/DynamicForm.vue";
-import DataTable from "../components/DataTable.vue";
-import type { FormField } from "../types/form";
+import { ref, computed } from 'vue'
+import DynamicForm from '../components/DynamicForm.vue'
+import DataTable from '../components/DataTable.vue'
+import type { FormField } from '../types/form'
 
-// ۱. ساختار فرم (Schema)
 const userSchema: FormField[] = [
+  { name: 'firstName', label: 'نام', type: 'text', required: true, placeholder: 'مثلاً یحیی' },
+  { name: 'lastName', label: 'نام خانوادگی', type: 'text', required: true },
+  { name: 'age', label: 'سن', type: 'number' },
   {
-    name: "firstName",
-    label: "نام",
-    type: "text",
-    required: true,
-    placeholder: "مثلاً یحیی",
-  },
-  { name: "lastName", label: "نام خانوادگی", type: "text", required: true },
-  { name: "age", label: "سن", type: "number" },
-  {
-    name: "role",
-    label: "نقش سازمانی",
-    type: "select",
+    name: 'role',
+    label: 'نقش سازمانی',
+    type: 'select',
     required: true,
     options: [
-      { label: "مدیر ارشد", value: "Admin" },
-      { label: "توسعه‌دهنده", value: "Developer" },
-      { label: "پشتیبان", value: "Support" },
-    ],
-  },
-];
+      { label: 'مدیر ارشد', value: 'Admin' },
+      { label: 'توسعه‌دهنده', value: 'Developer' },
+      { label: 'پشتیبان', value: 'Support' }
+    ]
+  }
+]
 
-// ۲. ساختار ستون‌های جدول
 const tableHeaders = [
-  { key: "firstName", label: "نام" },
-  { key: "lastName", label: "نام خانوادگی" },
-  { key: "age", label: "سن" },
-  { key: "role", label: "نقش سازمانی" },
-];
+  { key: 'firstName', label: 'نام' },
+  { key: 'lastName', label: 'نام خانوادگی' },
+  { key: 'age', label: 'سن' },
+  { key: 'role', label: 'نقش سازمانی' }
+]
 
-// ۳. State Management
-const formData = ref({});
-const usersList = ref<Record<string, any>[]>([]);
-const isLoading = ref(false);
+const formData = ref<Record<string, any>>({})
+const usersList = ref<Record<string, any>[]>([])
+const isLoading = ref(false)
+const editingId = ref<number | null>(null) // نگهداری ID کاربری که در حال ویرایش است
 
-// ۴. شبیه‌سازی ارسال به API و به‌روزرسانی جدول
+// تغییر داینامیک عنوان فرم
+const formTitle = computed(() => editingId.value ? 'ویرایش اطلاعات کاربر' : 'افزودن کاربر جدید')
+
 const handleSubmit = (data: Record<string, any>) => {
-  isLoading.value = true;
-
-  // شبیه‌سازی تاخیر شبکه (Network Delay)
+  isLoading.value = true
+  
   setTimeout(() => {
-    // افزودن داده جدید به بالای لیست جدول
-    usersList.value.unshift({ ...data, id: Date.now() });
+    if (editingId.value) {
+      // حالت ویرایش: پیدا کردن و آپدیت آیتم
+      const index = usersList.value.findIndex(u => u.id === editingId.value)
+      if (index !== -1) usersList.value[index] = { ...data, id: editingId.value }
+      editingId.value = null // خروج از حالت ویرایش
+    } else {
+      // حالت ایجاد: افزودن آیتم جدید
+      usersList.value.unshift({ ...data, id: Date.now() })
+    }
+    
+    formData.value = {} 
+    isLoading.value = false
+  }, 500)
+}
 
-    // ریست کردن فرم
-    formData.value = {};
-    isLoading.value = false;
-  }, 600);
-};
+// انتقال داده‌های سطر به فرم
+const handleEdit = (item: Record<string, any>) => {
+  formData.value = { ...item } // کپی کردن داده‌ها برای جلوگیری از تغییر مستقیم استیت جدول
+  editingId.value = item.id
+  window.scrollTo({ top: 0, behavior: 'smooth' }) // اسکرول نرم به سمت فرم
+}
+
+// حذف آیتم
+const handleDelete = (item: Record<string, any>) => {
+  if (confirm(`آیا از حذف ${item.firstName} ${item.lastName} اطمینان دارید؟`)) {
+    usersList.value = usersList.value.filter(u => u.id !== item.id)
+  }
+}
 </script>
 
 <template>
-  <div class="p-8 max-w-7xl mx-auto" dir="rtl">
-    <h1 class="text-3xl font-bold text-gray-800 mb-8 border-b pb-4">
-      مدیریت کاربران (یکپارچگی فرم و جدول)
-    </h1>
+  <div class="min-h-screen bg-gray-50/50 p-8">
+    <div class="max-w-7xl mx-auto" dir="rtl">
+      <header class="mb-8 flex items-center justify-between">
+        <h1 class="text-2xl font-bold text-gray-800 tracking-tight">پنل مدیریت کاربران</h1>
+        <div class="text-sm text-gray-500 bg-white px-4 py-2 rounded-full shadow-sm border border-gray-100">
+          تعداد کل: <span class="font-bold text-indigo-600">{{ usersList.length }}</span>
+        </div>
+      </header>
+      
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div class="lg:col-span-1">
+          <div class="sticky top-8">
+            <h2 class="text-lg font-semibold text-gray-700 mb-4 flex items-center gap-2">
+              <span class="bg-indigo-600 text-white w-2 h-6 rounded-full inline-block"></span>
+              {{ formTitle }}
+            </h2>
+            <!-- افزودن افکت شیشه‌ای (Glassmorphism) به پس‌زمینه فرم -->
+            <div class="backdrop-blur-sm bg-white/90 rounded-xl shadow-sm border border-gray-100 p-1">
+              <DynamicForm 
+                :schema="userSchema" 
+                v-model="formData" 
+                @submit="handleSubmit" 
+              />
+            </div>
+            <!-- دکمه انصراف از ویرایش -->
+            <button 
+              v-if="editingId" 
+              @click="editingId = null; formData = {}" 
+              class="w-full mt-3 text-gray-500 hover:text-gray-700 text-sm py-2 transition"
+            >
+              انصراف از ویرایش
+            </button>
+          </div>
+        </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-      <!-- بخش فرم (یک ستون) -->
-      <div class="lg:col-span-1">
-        <h2 class="text-xl font-semibold text-gray-700 mb-4 flex items-center">
-          <span
-            class="bg-blue-600 text-white w-6 h-6 rounded-full flex justify-center items-center text-sm ml-2"
-            >+</span
-          >
-          افزودن کاربر جدید
-        </h2>
-        <DynamicForm
-          :schema="userSchema"
-          v-model="formData"
-          @submit="handleSubmit"
-        />
-      </div>
-
-      <!-- بخش جدول (دو ستون) -->
-      <div class="lg:col-span-2">
-        <h2 class="text-xl font-semibold text-gray-700 mb-4 flex items-center">
-          <span
-            class="bg-gray-700 text-white w-6 h-6 rounded-full flex justify-center items-center text-sm ml-2"
-            >≡</span
-          >
-          لیست کاربران سیستم
-        </h2>
-        <DataTable
-          :headers="tableHeaders"
-          :items="usersList"
-          :isLoading="isLoading"
-        />
+        <div class="lg:col-span-2">
+          <h2 class="text-lg font-semibold text-gray-700 mb-4 flex items-center gap-2">
+            <span class="bg-gray-800 text-white w-2 h-6 rounded-full inline-block"></span>
+            لیست کاربران سیستم
+          </h2>
+          <DataTable 
+            :headers="tableHeaders" 
+            :items="usersList" 
+            :isLoading="isLoading"
+            @edit="handleEdit"
+            @delete="handleDelete"
+          />
+        </div>
       </div>
     </div>
   </div>
